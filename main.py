@@ -591,71 +591,46 @@ async def ni_command(event):
 
 @client.on(events.NewMessage(pattern='/deploy'))
 async def deploy_command(event):
-    """Créer un package zip de déploiement avec Python zipfile"""
+    """Créer un package zip de déploiement avec tous les fichiers à la racine"""
     try:
         if ADMIN_ID and event.sender_id != ADMIN_ID:
             await event.respond("❌ Seul l'administrateur peut créer un package de déploiement")
             return
 
-        await event.respond("📦 **Création du package en cours...**")
+        await event.respond("📦 **Création du package depl23 en cours...**")
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        zip_filename = f"bien233_{timestamp}.zip"
+        zip_filename = f"depl23_{timestamp}.zip"
 
+        # Liste des fichiers à inclure (tous à la racine)
         files_to_include = [
-            "main.py",
-            "predictor.py",
-            "excel_importer.py",
-            "yaml_manager.py",
-            "requirements.txt",
-            "bot_config.json",
-            ".gitignore"
+            'main.py', 'predictor.py', 'excel_importer.py', 'yaml_manager.py',
+            'requirements.txt', 'bot_config.json', 'Procfile', 'render.yaml'
         ]
 
-        # Créer le zip avec Python
-        try:
-            with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as zipf:
-                # Ajouter le dossier deploy_render
-                deploy_dir = "deploy_render"
-                if os.path.exists(deploy_dir):
-                    for root, dirs, files in os.walk(deploy_dir):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            arcname = os.path.relpath(file_path, ".")
-                            zipf.write(file_path, arcname)
-                            print(f"  ✓ Ajouté: {arcname}")
+        with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file in files_to_include:
+                if os.path.exists(file):
+                    zipf.write(file, file)  # Fichier à la racine du zip
 
-                # Ajouter les fichiers principaux
-                for filename in files_to_include:
-                    if os.path.exists(filename):
-                        zipf.write(filename)
-                        print(f"  ✓ Ajouté: {filename}")
-
-            file_size = os.path.getsize(zip_filename)
-            size_mb = file_size / (1024 * 1024)
-
-            await event.respond(f"✅ **Package créé: {size_mb:.2f} MB**\n📤 Envoi en cours...")
-
-            # Envoyer le fichier
+        if os.path.exists(zip_filename):
+            file_size = os.path.getsize(zip_filename) / (1024 * 1024)
+            
             await client.send_file(
                 event.chat_id,
                 zip_filename,
-                caption=f"📦 **Package bien233 créé avec succès!**\n\n✅ Fichier: {zip_filename}\n💾 Taille: {size_mb:.2f} MB\n🚀 Prêt pour déploiement Replit!"
+                caption=f"📦 **Package depl23 créé avec succès!**\n\n✅ Fichier: {zip_filename}\n💾 Taille: {file_size:.2f} MB\n🎯 Tous les fichiers à la racine\n🚀 Prêt pour déploiement Render.com"
             )
-
-            # Nettoyer
+            
             try:
                 os.remove(zip_filename)
-                print(f"🗑️ Fichier temporaire supprimé")
-            except Exception as cleanup_error:
-                print(f"⚠️ Impossible de supprimer le fichier: {cleanup_error}")
-
-            print(f"✅ Package {zip_filename} créé et envoyé avec succès")
-
-        except Exception as zip_error:
-            await event.respond(f"❌ Erreur création zip: {zip_error}")
-            print(f"❌ Erreur zipfile: {zip_error}")
-
+            except:
+                pass
+            
+            print(f"✅ Package {zip_filename} créé et envoyé")
+        else:
+            await event.respond("❌ Erreur: Impossible de créer le fichier zip")
+            
     except Exception as e:
         print(f"❌ Erreur deploy_command: {e}")
         await event.respond(f"❌ Erreur: {e}")
@@ -828,8 +803,9 @@ async def handle_excel_upload(event):
         # --- LOGIQUE PRINCIPALE : ÉCOUTE DU CANAL SOURCE ---
 
 @client.on(events.NewMessage())
+@client.on(events.MessageEdited())
 async def handle_new_message(event):
-    """Gère les nouveaux messages dans le canal de statistiques (source)"""
+    """Gère les nouveaux messages ET les messages édités dans le canal de statistiques"""
     if not detected_stat_channel:
         return
     if not (event.is_channel and event.chat_id == detected_stat_channel):

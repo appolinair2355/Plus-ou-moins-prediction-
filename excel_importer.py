@@ -200,22 +200,21 @@ class ExcelPredictionManager:
     def extract_points_and_winner(self, message_text: str):
         """
         Extrait les points du Joueur et du Banquier.
-        Format: #N620. 1(4♠️7♦️J♣️) - ✅4(9♣️5♠️) #T5
+        Format: #N290. ✅4(J♥️4♣️K♣️) - 1(6♦️5♣️Q♥️) #T5
+        RÈGLE: Premier groupe = Joueur, Deuxième groupe = Banquier (peu importe où est ✅)
         """
         try:
-            # Chercher les groupes de points avec leurs symboles
-            # Format: [symbole optionnel]point(cartes)
-            pattern = r"(✅)?(\d+)\([^)]+\)"
+            # Chercher tous les groupes de points (avec ou sans ✅)
+            # Format: [✅ optionnel]point(cartes)
+            pattern = r"(?:✅)?(\d+)\([^)]+\)"
             matches = re.findall(pattern, message_text)
 
             if len(matches) >= 2:
-                # Premier groupe = Joueur, Deuxième groupe = Banquier
-                _joueur_win_symbol, joueur_point_str = matches[0]
-                _banquier_win_symbol, banquier_point_str = matches[1]
+                # TOUJOURS: Premier = Joueur, Deuxième = Banquier
+                joueur_point = int(matches[0])
+                banquier_point = int(matches[1])
 
-                joueur_point = int(joueur_point_str)
-                banquier_point = int(banquier_point_str)
-
+                print(f"📊 Points extraits: Joueur={joueur_point}, Banquier={banquier_point} depuis '{message_text}'")
                 return joueur_point, banquier_point
 
             return None, None
@@ -268,14 +267,15 @@ class ExcelPredictionManager:
             # C'est notre numéro cible, vérifier le résultat
             print(f"🔍 Vérification Excel #{predicted_numero} sur offset interne {current_offset} (numéro {game_number})")
 
-            # NOUVELLE LOGIQUE: Attendre que les messages ⏰ soient finalisés
+            # ATTENTE DES MESSAGES EN ÉDITION: Ne pas ignorer, mais ATTENDRE la finalisation
+            # Le bot recevra un événement MessageEdited quand le message passera de ⏰/🕐 à ✅/🔰
             if "⏰" in message_text or "🕐" in message_text:
-                print(f"⏰ Message en cours d'édition (#{game_number}) - en attente de finalisation")
-                return None, True  # Attendre sans incrémenter l'offset
+                print(f"⏰ Message #{game_number} en cours d'édition - ATTENTE de finalisation (✅ ou 🔰)")
+                return None, True  # None = pas de décision, True = continuer à surveiller ce message
             
-            # Vérifier si le message est finalisé (🔰 ou ✅)
+            # Vérifier si le message est finalisé (🔰 ou ✅ uniquement)
             if not any(tag in message_text for tag in ["✅", "🔰"]):
-                print(f"⚠️ Message sans tag de finalisation (ni ✅ ni 🔰), on continue")
+                print(f"⚠️ Message sans tag de finalisation (ni ✅ ni 🔰) - ignoré")
                 return None, True
 
             # Extraire les points

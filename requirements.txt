@@ -8,3 +8,5 @@ openpyxl
 python-dotenv
 pyyaml
 telethon
+pyyaml
+telethon
